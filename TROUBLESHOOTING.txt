@@ -1,0 +1,152 @@
+TROUBLESHOOTING — Notes perso de dev
+======================================
+Fichier de notes perso. Je mets ici tous les bugs chiants que j'ai rencontrés
+pendant le dev du projet pour pas retomber dessus.
+
+=======================================================================
+BUG #1 — Monte Carlo : tous les paths identiques (biais énorme)
+=======================================================================
+
+Symptôme :
+  - Le prix Monte Carlo sortait complètement faux (ex: 37.30 au lieu de 10.45)
+  - Brownian1D : mean de B_T = 2.79 au lieu de ~0
+  - BrownianND : ZeroDivisionError dans le calcul de corrélation (std = 0)
+
+Cause :
+  Je créais un nouveau générateur EcuyerCombined() à l'intérieur de la boucle
+  sur les paths, donc chaque path repartait du même seed et donnait exactement
+  la même trajectoire. Résultat : variance nulle, prix complètement biaisé.
+
+  Code FAUX (à ne JAMAIS faire) :
+  --------------------------------
+  for _ in range(nb_paths):
+      gen = NormalBoxMuller(0.0, 1.0, EcuyerCombined())   # <- DANGER : seed reset
+      proc = BSMilstein1D(gen, spot, rate, vol)
+      proc.simulate(0.0, T, nb_steps)
+      payoffs.append(max(proc.get_path().values[-1] - K, 0.0))
+
+  Code CORRECT :
+  --------------
+  shared_gen = NormalBoxMuller(0.0, 1.0, EcuyerCombined())  # <- UNE SEULE FOIS
+  proc = BSMilstein1D(shared_gen, spot, rate, vol)
+  for _ in range(nb_paths):
+      proc.simulate(0.0, T, nb_steps)                        # <- réutilise le même gen
+      payoffs.append(max(proc.get_path().values[-1] - K, 0.0))
+
+Règle retenue :
+  En Monte Carlo, le générateur doit être créé UNE SEULE FOIS et partagé
+  entre tous les paths. Son état interne doit avancer en continu.
+  Si je recrée le générateur dans la boucle, je repart toujours du même
+  seed => même path => biais total.
+
+=======================================================================
+BUG #2 — BrownianND : ZeroDivisionError dans le calcul de corrélation
+=======================================================================
+
+Symptôme :
+  ZeroDivisionError: float division by zero
+  dans le calcul de rho empirique : empirical_rho = cov / (std1 * std2)
+
+Cause :
+  Même bug que #1. Comme tous les paths étaient identiques (même seed),
+  std1 = 0 et std2 = 0, donc division par zéro.
+
+Fix :
+  Même fix que #1 — partager le générateur.
+
+=======================================================================
+BUG #3 — pdftotext introuvable sur Mac
+=======================================================================
+
+Symptôme :
+  zsh: command not found: pdftotext
+
+Cause :
+  pdftotext n'est pas installé par défaut sur macOS.
+
+Fix :
+  Utiliser pypdf en Python à la place :
+    pip3 install pypdf
+    from pypdf import PdfReader
+    reader = PdfReader('fichier.pdf')
+    for page in reader.pages:
+        print(page.extract_text())
+
+=======================================================================
+BUG #4 — Import circulaire entre modules sde et random_generator
+=======================================================================
+
+Symptôme :
+  ImportError ou comportement bizarre quand on importe depuis sde/
+  alors que sde/ importe random_generator/
+
+Cause :
+  Si on importe random_generator depuis sde/__init__.py ET que random_generator
+  importe quelque chose de sde, on a un import circulaire.
+
+Fix :
+  - Ne jamais faire d'import croisé entre modules de même niveau
+  - Dans sde/, importer directement depuis le sous-module :
+      from random_generator.random_generator import RandomGenerator
+    et PAS :
+      from random_generator import RandomGenerator  (peut causer des soucis)
+
+=======================================================================
+BUG #5 — Cholesky : valeur négative sous la racine (erreur numérique)
+=======================================================================
+
+Symptôme :
+  math domain error dans math.sqrt() pendant la décomposition de Cholesky
+
+Cause :
+  Pour une matrice semi-définie positive (pas définie positive), les termes
+  diagonaux de Cholesky peuvent être légèrement négatifs à cause des erreurs
+  d'arrondi floating point (ex: -1e-15 au lieu de 0).
+
+Fix :
+  Clamper à 0 avant le sqrt :
+    val = matrix[i][i] - s
+    if val < 0:
+        val = 0.0    # erreur numérique, on suppose que c'est ~0
+    L[i][j] = math.sqrt(val)
+
+=======================================================================
+BUG #6 — SobolGenerator : warning scipy "n doit être une puissance de 2"
+=======================================================================
+
+Symptôme :
+  UserWarning: The balance properties of Sobol' points require n to be a power of 2.
+
+Cause :
+  scipy.stats.qmc.Sobol génère des séquences avec les meilleures propriétés
+  seulement quand n est une puissance de 2 (256, 512, 1024, 2048, ...)
+
+Fix :
+  Utiliser nb_sim qui soit une puissance de 2 quand on utilise Sobol.
+  Ou ignorer le warning si on fait juste des tests — ça marche quand même,
+  juste les propriétés d'équirépartition sont légèrement moins bonnes.
+
+=======================================================================
+RAPPELS IMPORTANTS (pas des bugs mais je veux pas oublier)
+=======================================================================
+
+1. Le générateur est TOUJOURS partagé entre paths en Monte Carlo.
+
+2. L'architecture : RandomGenerator est la classe mère de TOUT.
+   Même les générateurs quasi-aléatoires (Halton, Sobol) héritent de
+   UniformGenerator qui hérite de RandomGenerator.
+
+3. simulate() dans RandomProcess réinitialise les paths à chaque appel
+   (_init_paths). C'est voulu : on repart de zéro pour chaque nouvelle
+   simulation mais le générateur lui continue d'avancer.
+
+4. Pour tester statistiquement un générateur :
+   - 100 000 simulations minimum
+   - TestMean(100_000, 0.01) = tolérance 1%
+   - TestVariance(100_000, 0.10) = tolérance 10%
+
+5. Milstein > Euler en précision (ordre 1 vs ordre 0.5) mais pour GBM
+   (Black-Scholes à coefficients constants), Milstein = log-Euler = exact.
+   Donc pas de différence entre Euler et Milstein pour BS pur.
+
+=======================================================================
