@@ -160,3 +160,40 @@ class MCEngine:
 
         mapping = BasicMapping(payoff, process)
         return self.price(mapping, nb_paths, T, nb_steps, rate)
+
+    def simulate_paths(
+        self,
+        process,
+        nb_paths: int,
+        T: float,
+        nb_steps: int,
+    ):
+        """
+        Simulate nb_paths trajectories and return all paths.
+
+        Parameters
+        ----------
+        process : RandomProcess
+            A configured stochastic process.
+        nb_paths : int
+            Number of paths to simulate.
+        T : float
+            Time to maturity (> 0).
+        nb_steps : int
+            Number of discretization steps per path.
+
+        Returns
+        -------
+        list of list of SinglePath
+            One entry per simulation, each entry is the list of
+            SinglePath objects (one per asset dimension).
+        """
+        all_paths = []
+        for _ in range(nb_paths):
+            process.simulate(0.0, T, nb_steps)
+            # Deep-copy the values so they are not overwritten on next call
+            snapshot = [
+                list(path.values) for path in process.get_all_paths()
+            ]
+            all_paths.append(snapshot)
+        return all_paths
