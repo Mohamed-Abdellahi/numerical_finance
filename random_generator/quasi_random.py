@@ -9,7 +9,7 @@ Implemented:
   - HaltonGenerator  : Halton sequence (base-p radical inverse)
   - SobolGenerator   : Sobol sequence (Niederreiter family, using scipy)
 
-Reference: Slides 3 (Kaiza Amouh), pages 42-50
+
 """
 
 import math

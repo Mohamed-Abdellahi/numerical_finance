@@ -8,7 +8,6 @@ Uses the inverse CDF method (cumulative sum of probabilities).
 
 Mean and Variance are derived from the given probability vector.
 
-Reference: Generator Architecture PDF (Kaiza Amouh)
 """
 
 from typing import List

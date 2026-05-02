@@ -6,7 +6,6 @@ Simulates a fair coin flip: returns 0 or 1 with equal probability.
 This is the simplest discrete generator and is also used internally
 by the NormalRejectionSampling generator (to assign a random sign).
 
-Reference: Generator Architecture PDF (Kaiza Amouh)
 """
 
 from .discrete_generator import DiscreteGenerator

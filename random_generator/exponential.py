@@ -6,7 +6,6 @@ Two algorithms to generate Exp(lambda) random variables:
 1. ExponentialInverseDistribution - Inverse CDF method: X = -ln(U) / lambda
 2. ExponentialRejectionSampling   - Rejection sampling on [0, b] with uniform envelope
 
-Reference: Slides 1 (Kaiza Amouh), pages 25-31
 """
 
 import math
@@ -74,7 +73,6 @@ class ExponentialRejectionSampling(Exponential):
 
     Note: b should be chosen large enough that F(b) ≈ 1 (e.g. b = 10/lambda).
 
-    Reference: Slides 1, pages 29-31
     """
 
     def __init__(self, lam: float, uniform: UniformGenerator, b: float = None):

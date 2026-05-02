@@ -32,11 +32,11 @@ from .pseudo_generator import PseudoGenerator
 from .linear_congruential import LinearCongruential
 from .ecuyer_combined import EcuyerCombined
 from .halton import HaltonGenerator
-from .sobol import SobolGenerator
+from .sobol import SobolPathGenerator
 
 # Continuous
 from .continuous_generator import ContinuousGenerator
-from .normal import Normal, NormalBoxMuller, NormalCLT, NormalRejectionSampling
+from .normal import Normal, NormalBoxMuller, NormalCLT, NormalRejectionSampling, NormalInverseCDF
 from .exponential import (
     Exponential,
     ExponentialInverseDistribution,

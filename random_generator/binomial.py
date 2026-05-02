@@ -5,7 +5,6 @@ Generates Binomial(n, p) random variables: sum of n independent Bernoulli(p).
 
 Mean = n*p, Variance = n*p*(1-p).
 
-Reference: Generator Architecture PDF (Kaiza Amouh)
 """
 
 from .discrete_generator import DiscreteGenerator

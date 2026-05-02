@@ -11,7 +11,7 @@ Algorithm 2 (via Exponential inter-arrivals):
   Count arrivals in [0,1]: N = max{k : E1+...+Ek <= lambda}
   where each Ei ~ Exp(1). Equivalently: N = max{k : U1*...*Uk >= exp(-lambda)}.
 
-Reference: Slides 1 (Kaiza Amouh), Generator Architecture PDF
+
 """
 
 import math

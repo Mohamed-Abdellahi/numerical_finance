@@ -5,7 +5,6 @@ Generates Bernoulli(p) random variables: returns 1 with probability p, 0 otherwi
 
 Mean = p, Variance = p*(1-p).
 
-Reference: Generator Architecture PDF (Kaiza Amouh)
 """
 
 from .discrete_generator import DiscreteGenerator

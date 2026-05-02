@@ -2,7 +2,7 @@
 PricingResult
 =============
 Container for any pricing computation output.
-Also provides the factory method PricingResult.from_payoffs() used by all pricers.
+Shared by all pricers (MC, QMC, Longstaff-Schwartz).
 """
 
 import math
@@ -34,10 +34,6 @@ class PricingResult:
     nb_paths: int
     method: str = "Monte Carlo"
 
-    # ------------------------------------------------------------------
-    # Factory method — avoids floating _build_result functions everywhere
-    # ------------------------------------------------------------------
-
     @classmethod
     def from_payoffs(
         cls,
@@ -54,26 +50,11 @@ class PricingResult:
           price     = e^{-rT} * mean(payoffs)
           std_error = e^{-rT} * std_dev / sqrt(n)
           CI        = price ± 1.96 * std_error
-
-        Parameters
-        ----------
-        payoffs : list of float
-            Raw (undiscounted) payoff for each simulated path.
-        rate : float
-            Risk-free rate for discounting.
-        T : float
-            Time to maturity (discounting horizon).
-        nb_paths : int
-        method : str
-
-        Returns
-        -------
-        PricingResult
         """
-        n = nb_paths
+        n        = nb_paths
         discount = math.exp(-rate * T)
-        mean = sum(payoffs) / n
-        var  = sum((p - mean) ** 2 for p in payoffs) / (n - 1)
+        mean     = sum(payoffs) / n
+        var      = sum((p - mean) ** 2 for p in payoffs) / (n - 1)
 
         price     = discount * mean
         std_error = discount * math.sqrt(var / n)
@@ -94,4 +75,5 @@ class PricingResult:
 
     @property
     def ci_width(self) -> float:
+        """Width of the 95% confidence interval."""
         return self.conf_interval[1] - self.conf_interval[0]

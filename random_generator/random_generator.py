@@ -2,7 +2,7 @@
 RandomGenerator
 ===============
 Abstract base class for all random number generators.
-Mirrors the C++ RandomGenerator class exactly.
+
 
 Every generator must implement Generate().
 Mean() and Variance() are estimated empirically via Monte Carlo.

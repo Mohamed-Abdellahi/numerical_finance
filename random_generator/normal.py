@@ -7,7 +7,6 @@ Three methods to generate N(mu, sigma^2) random variables:
 2. NormalCLT            - Central Limit Theorem (sum of 12 uniforms)
 3. NormalRejectionSampling - Generalized rejection sampling using Double Exponential
 
-All algorithms taken directly from the professor's slides (Kaiza Amouh, Slides 1).
 
 Reference:
   - Box-Muller: Slides 1, pages 33-35
@@ -18,6 +17,7 @@ Reference:
 import math
 from .continuous_generator import ContinuousGenerator
 from .uniform_generator import UniformGenerator
+from scipy.special import ndtri  # inverse CDF of standard normal because it's QMC-compatible (1 uniform → 1 normal, no pairing) 
 
 
 class Normal(ContinuousGenerator):
@@ -65,8 +65,6 @@ class NormalBoxMuller(Normal):
       Y = R * sin(Theta)
 
     Then Z = mu + sigma * X ~ N(mu, sigma^2).
-
-    Reference: Slides 1, pages 33-35
     """
 
     def __init__(self, mu: float, sigma: float, uniform: UniformGenerator):
@@ -107,8 +105,6 @@ class NormalCLT(Normal):
 
     Sum of 12 independent U[0,1] and subtract 6:
       X = (sum_{i=1}^{12} U_i) - 6   ~  N(0, 1)
-
-    Reference: Slides 1, page 36
     """
 
     def generate(self) -> float:
@@ -127,13 +123,13 @@ class NormalRejectionSampling(Normal):
       - Constant:  a = sqrt(2*e/pi)
       - Accept if  Y <= phi(X) / (a * g(X))
 
-    Algorithm (Slides 1, pages 37-40):
+    Algorithm 
       1. Generate X ~ Exponential(1) via inverse CDF: X = -ln(U1)
       2. Generate a random sign via Head or Tail: X = +/- X
       3. Generate U2 ~ U[0,1]
       4. Accept if U2 <= exp( -(|X|-1)^2 / 2 )
 
-    Reference: Slides 1, pages 37-40
+  
     """
 
     # a = sqrt(2e/pi)
@@ -158,3 +154,14 @@ class NormalRejectionSampling(Normal):
             # Accept condition: u2 <= exp(-(|x|-1)^2 / 2)
             if u2 <= math.exp(-((abs(x) - 1.0) ** 2) / 2.0):
                 return self._mu + self._sigma * x
+
+
+class NormalInverseCDF(Normal):
+    """
+    N(mu, sigma²) via transformée inverse : Z = Φ⁻¹(U).
+    QMC-compatible : 1 uniforme → 1 normale, sans pairing.
+    """
+    def generate(self) -> float:
+        u = self._uniform.generate()
+        u = max(1e-10, min(1 - 1e-10, u))
+        return self._mu + self._sigma * float(ndtri(u))

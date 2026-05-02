@@ -17,66 +17,32 @@ Properties:
 from typing import Optional, List
 from .uniform_generator import UniformGenerator
 
-
-class SobolGenerator(UniformGenerator):
+class SobolPathGenerator(UniformGenerator):
     """
-    Sobol sequence generator using scipy.stats.qmc.Sobol.
-
+    Sobol generator dimension-aware.
+    
     Parameters
     ----------
     dimension : int
-        Dimension of the Sobol sequence (1 for scalar output).
-    scramble : bool
-        Whether to scramble the sequence. Recommended for MC integration.
-    seed : int or None
-        Random seed for scrambling reproducibility.
+        Dimension totale du point Sobol = n_assets * nb_steps.
+        C'est le MC engine qui calcule et passe cette valeur.
     """
-
-    def __init__(
-        self,
-        dimension: int = 1,
-        scramble: bool = True,
-        seed: Optional[int] = 42,
-    ):
+    def __init__(self, dimension: int, scramble: bool = True, seed: int = 42):
         super().__init__()
-        try:
-            from scipy.stats.qmc import Sobol
-        except ImportError:
-            raise ImportError(
-                "scipy is required for SobolGenerator. "
-                "Install with: pip install scipy"
-            )
-        self._dimension = dimension
+        from scipy.stats.qmc import Sobol
+        self._full_dim = dimension
         self._engine = Sobol(d=dimension, scramble=scramble, seed=seed)
-        self._buffer: List[float] = []
-        self._buffer_index = 0
-        self._batch_size = 1024  # Generate in batches for efficiency
+        self._current_vector: List[float] = []
+        self._index: int = 0
+
+    def next_path(self) -> None:
+        """Tirer le prochain point Sobol. Appelé par le MC engine."""
+        point = self._engine.random(1)[0]
+        self._current_vector = [max(1e-10, min(1-1e-10, float(u))) for u in point]
+        self._index = 0
 
     def generate(self) -> float:
-        """Return the next scalar value from the 1-D Sobol sequence."""
-        if self._buffer_index >= len(self._buffer):
-            samples = self._engine.random(self._batch_size)
-            self._buffer = samples[:, 0].tolist()
-            self._buffer_index = 0
-        value = self._buffer[self._buffer_index]
-        self._buffer_index += 1
-        return float(value)
-
-    def generate_vector(self, n: int) -> List[List[float]]:
-        """
-        Generate n samples of the full d-dimensional Sobol vector.
-
-        Parameters
-        ----------
-        n : int
-            Number of samples to generate.
-
-        Returns
-        -------
-        list of list of float, shape (n, dimension)
-        """
-        return self._engine.random(n).tolist()
-
-    @property
-    def dimension(self) -> int:
-        return self._dimension
+        """Retourner la prochaine coordonnée."""
+        value = self._current_vector[self._index]
+        self._index += 1
+        return value
