@@ -3,16 +3,17 @@ pricer.american
 ================
 Early exercise pricing via the Longstaff-Schwartz algorithm.
 
-Completely separate from the MCEngine/Mapping architecture —
+Completely separate from the MCEngine/Mapping architecture.
 Longstaff-Schwartz requires storing all paths and running
-backward dynamic programming, which doesn't fit the
-one-path-at-a-time Mapping pattern.
+backward dynamic programming.
 
 Classes
 -------
-LongstaffSchwartz : Bermudan basket option pricer.
+LongstaffSchwartz   : Bermudan basket option pricer (basic + transparent QMC).
+LongstaffSchwartzVR : Extended pricer with antithetic, CV, and full VR.
 """
 
-from .longstaff_schwartz import LongstaffSchwartz
+from .longstaff_schwartz    import LongstaffSchwartz
+from .longstaff_schwartz_vr import LongstaffSchwartzVR
 
-__all__ = ["LongstaffSchwartz"]
+__all__ = ["LongstaffSchwartz", "LongstaffSchwartzVR"]
