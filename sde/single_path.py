@@ -9,7 +9,6 @@ Provides:
   - GetState(time) → float    ← interpolate/retrieve value at a given time
   - GetAllValues() → list     ← return the full path
 
-Reference: SDE Architecture PDF (Kaiza Amouh)
 """
 
 from typing import List

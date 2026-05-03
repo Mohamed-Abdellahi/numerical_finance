@@ -46,8 +46,6 @@ class ExponentialInverseDistribution(Exponential):
     Exponential generator using the Inverse CDF (quantile) method.
 
     F^{-1}(u) = -ln(1 - u) / lambda  ≈  -ln(u) / lambda
-
-    Reference: Slides 1, pages 25-28
     """
 
     def generate(self) -> float:

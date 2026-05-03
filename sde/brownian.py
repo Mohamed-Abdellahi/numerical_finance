@@ -12,11 +12,6 @@ BrownianND:
   Given correlation matrix Sigma:
     Sigma = B * B^T  (Cholesky)
     X = B * Z  where Z ~ N(0, I) independent
-
-Reference:
-  - Slides 2 (Kaiza Amouh), pages 17-18
-  - SDE Architecture PDF
-  - Project PDF: "Simulation of a correlated Gaussian Vector"
 """
 
 import math

@@ -7,11 +7,6 @@ Three methods to generate N(mu, sigma^2) random variables:
 2. NormalCLT            - Central Limit Theorem (sum of 12 uniforms)
 3. NormalRejectionSampling - Generalized rejection sampling using Double Exponential
 
-
-Reference:
-  - Box-Muller: Slides 1, pages 33-35
-  - CLT:        Slides 1, page 36
-  - Rejection:  Slides 1, pages 37-40 (uses exponential + head/tail as envelope)
 """
 
 import math
