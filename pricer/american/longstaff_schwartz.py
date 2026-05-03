@@ -3,21 +3,17 @@ LongstaffSchwartz
 ==================
 Pricer for Bermudan options using the Longstaff-Schwartz algorithm.
 
-Algorithm
----------
-1. Simulate M paths forward - store all asset values at all time steps.
-2. Initialize: everyone exercises at maturity T.
-3. Backward induction from step N-1 to 1:
-   a. Intrinsic value at step k: g = max(basket - K, 0)
-   b. For ITM paths: regress discounted cashflow on polynomial basis
-   c. Exercise now if intrinsic >= estimated continuation value
-4. Price = mean over paths of exp(-r*tau)*cashflow(tau)
+Forward simulation of M paths, then backward DP induction:
+  - Initialise: everyone exercises at maturity T.
+  - At each exercise date (backward): regress discounted cashflows on
+    a polynomial basis of the basket value for ITM paths; exercise if
+    intrinsic >= estimated continuation.
 
-The class exposes protected helpers (_simulate_paths, _run_ls, _find_sobol)
-that LongstaffSchwartzVR reuses to add variance reduction.
+The protected helpers _simulate_paths, _run_ls, _find_sobol are
+reused by LongstaffSchwartzVR.
 
-QMC compatibility: if the process generator implements next_path()
-(SobolPathGenerator), it is called automatically before each simulation.
+QMC: if the process generator implements next_path() (SobolPathGenerator),
+it is called automatically before each simulation.
 
 Reference: Longstaff & Schwartz (2001).
 """
@@ -54,10 +50,6 @@ class LongstaffSchwartz:
             raise ValueError("regression_degree must be >= 1.")
         self._degree = regression_degree
 
-    # ------------------------------------------------------------------
-    # Public interface
-    # ------------------------------------------------------------------
-
     def price(
         self,
         bermudan_payoff: BermudanBasketPayoff,
@@ -69,14 +61,10 @@ class LongstaffSchwartz:
         """
         Price a Bermudan Basket option.
 
-        Works transparently with both pseudo-random (L'Ecuyer) and
-        quasi-random (Sobol) processes - the generator's next_path()
-        is called automatically when present.
-
         Parameters
         ----------
         bermudan_payoff : BermudanBasketPayoff
-        process : RandomProcess  (BSMilsteinND recommended)
+        process : RandomProcess
         nb_paths : int
         nb_steps : int
         rate : float
@@ -101,10 +89,6 @@ class LongstaffSchwartz:
             nb_paths=nb_paths, method="Longstaff-Schwartz"
         )
 
-    # ------------------------------------------------------------------
-    # Protected helpers reused by LongstaffSchwartzVR
-    # ------------------------------------------------------------------
-
     @staticmethod
     def _parse_payoff(bermudan_payoff: BermudanBasketPayoff, nb_steps: int):
         """Extract payoff parameters and map exercise dates to step indices."""
@@ -120,9 +104,8 @@ class LongstaffSchwartz:
     @staticmethod
     def _find_sobol(process: RandomProcess):
         """
-        Walk the generator chain to find a SobolPathGenerator (next_path()).
-        Returns the Sobol generator if found, else None.
-        Handles both direct use and use via NormalInverseCDF wrapper.
+        Walk the generator chain to find a SobolPathGenerator.
+        Returns it if found, else None.
         """
         gen = process._generator
         if hasattr(gen, "next_path"):
@@ -140,8 +123,7 @@ class LongstaffSchwartz:
         nb_steps: int,
     ) -> np.ndarray:
         """
-        Simulate nb_paths paths and store them in a
-        (n_assets, nb_paths, nb_steps+1) array.
+        Simulate nb_paths paths, returned as (n_assets, nb_paths, nb_steps+1).
         Calls next_path() automatically for QMC generators.
         """
         sobol      = self._find_sobol(process)
@@ -168,22 +150,15 @@ class LongstaffSchwartz:
         rate: float,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Longstaff-Schwartz backward induction on a pre-simulated path matrix.
-
-        Parameters
-        ----------
-        all_values   : np.ndarray, shape (n_assets, total_paths, nb_steps+1)
-        total_paths  : int
-        exercise_steps, weights, K, dt, rate : as usual
+        Backward induction on a pre-simulated path matrix.
 
         Returns
         -------
-        cashflow  : np.ndarray, shape (total_paths,)  - undiscounted payoff at tau
-        tau_step  : np.ndarray, shape (total_paths,)  - optimal exercise step index
+        cashflow : np.ndarray, shape (total_paths,)  undiscounted payoff at tau
+        tau_step : np.ndarray, shape (total_paths,)  optimal exercise step index
         """
         n_assets = all_values.shape[0]
 
-        # Initialise: everyone exercises at maturity
         tau_step = np.full(total_paths, exercise_steps[-1], dtype=int)
         basket_T = sum(
             weights[i] * all_values[i, :, exercise_steps[-1]]
@@ -191,7 +166,6 @@ class LongstaffSchwartz:
         )
         cashflow = np.maximum(basket_T - K, 0.0)
 
-        # Backward induction
         for k in reversed(range(len(exercise_steps) - 1)):
             step_k  = exercise_steps[k]
             step_dt = (tau_step - step_k) * dt
