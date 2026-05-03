@@ -3,9 +3,10 @@ BSEulerND
 ==========
 Euler-Maruyama discretization for N correlated Black-Scholes assets.
 
-  S_i_{t+dt} = S_i_t * (1 + r_i*dt + sigma_i*sqrt(dt)*X_i)
+  S_i_{t+dt} = S_i_t * (1 + (r_i - q_i)*dt + sigma_i*sqrt(dt)*X_i)
 
-where X = L*Z, Z ~ N(0, I_n), L is the Cholesky factor.
+where X = L*Z, Z ~ N(0, I_n), L is the Cholesky factor,
+and q_i is the continuous dividend yield of asset i (0 if no dividends).
 
 Strong convergence order: O(sqrt(dt))
 """
@@ -30,7 +31,7 @@ class BSEulerND(BlackScholesND):
             x = self._generate_correlated_normals()
             for i in range(self._n):
                 dw = sqrt_dt * x[i]
-                current[i] = current[i] + self._rates[i] * current[i] * dt \
+                current[i] = current[i] + (self._rates[i] - self._div_yields[i]) * current[i] * dt \
                              + self._vols[i] * current[i] * dw
                 current[i] = max(current[i], 0.0)
                 self._paths[i].insert_value(current[i])

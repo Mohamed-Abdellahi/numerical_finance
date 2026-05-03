@@ -3,15 +3,18 @@ BlackScholesND
 ===============
 Abstract base class for N-asset correlated Black-Scholes.
 
-Each asset i follows:
-  dS_i = r_i * S_i * dt + sigma_i * S_i * dW_i
+Each asset i follows (with continuous dividend yield q_i):
+  dS_i = (r_i - q_i) * S_i * dt + sigma_i * S_i * dW_i
 with d<W_i, W_j> = rho_ij * dt
+
+When div_yields is None or all zeros the model reduces to the standard
+no-dividend Black-Scholes.
 
 Correlated increments via Cholesky decomposition of the correlation matrix.
 
 Concrete subclasses:
-  BSEulerND    — Euler-Maruyama (bs_euler_nd.py)
-  BSMilsteinND — log-Euler exact (bs_milstein_nd.py)
+  BSEulerND    -- Euler-Maruyama (bs_euler_nd.py)
+  BSMilsteinND -- log-Euler exact (bs_milstein_nd.py)
 """
 
 from abc import abstractmethod
@@ -24,7 +27,7 @@ from .cholesky import cholesky_decompose, validate_correlation
 
 class BlackScholesND(RandomProcess):
     """
-    Abstract base for N-asset correlated Black-Scholes.
+    Abstract base for N-asset correlated Black-Scholes with optional dividends.
 
     Parameters
     ----------
@@ -38,6 +41,8 @@ class BlackScholesND(RandomProcess):
         Volatilities sigma_i (all > 0).
     correlation_matrix : list of list of float, optional
         N x N correlation matrix. If None, assets are independent.
+    div_yields : list of float, optional
+        Continuous dividend yields q_i. If None, all dividends are zero.
     """
 
     def __init__(
@@ -47,6 +52,7 @@ class BlackScholesND(RandomProcess):
         rates: List[float],
         vols: List[float],
         correlation_matrix: Optional[List[List[float]]] = None,
+        div_yields: Optional[List[float]] = None,
     ):
         n = len(spots)
         if len(rates) != n or len(vols) != n:
@@ -55,13 +61,16 @@ class BlackScholesND(RandomProcess):
             raise ValueError("All spot prices must be strictly positive.")
         if any(v <= 0 for v in vols):
             raise ValueError("All volatilities must be strictly positive.")
+        if div_yields is not None and len(div_yields) != n:
+            raise ValueError("div_yields must have the same length as spots.")
 
         super().__init__(generator, dimension=n)
 
-        self._spots = list(spots)
-        self._rates = list(rates)
-        self._vols = list(vols)
-        self._n = n
+        self._spots      = list(spots)
+        self._rates      = list(rates)
+        self._vols       = list(vols)
+        self._div_yields = list(div_yields) if div_yields is not None else [0.0] * n
+        self._n          = n
 
         if correlation_matrix is None:
             self._cholesky = [
@@ -77,10 +86,7 @@ class BlackScholesND(RandomProcess):
         ...
 
     def _generate_correlated_normals(self) -> List[float]:
-        """
-        Generate one vector of N correlated N(0,1) values using Cholesky.
-        x = L * z  where z ~ N(0, I_n).
-        """
+        """Generate one vector of N correlated N(0,1) values via Cholesky: x = L*z."""
         z = [self._generator.generate() for _ in range(self._n)]
         return [
             sum(self._cholesky[i][j] * z[j] for j in range(self._n))
@@ -98,6 +104,10 @@ class BlackScholesND(RandomProcess):
     @property
     def vols(self) -> List[float]:
         return list(self._vols)
+
+    @property
+    def div_yields(self) -> List[float]:
+        return list(self._div_yields)
 
     @property
     def cholesky(self) -> List[List[float]]:
